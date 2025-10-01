@@ -36,19 +36,19 @@ export default function CreateScreen() {
   };
 
   const handleCreateProforma = () => {
-    console.log("Create Proforma Invoice");
+    router.push("/create-proforma");
   };
 
   const handleCreateTimesheet = () => {
-    console.log("Create Timesheet Invoice");
+    router.push("/create-timesheet");
   };
 
   const handleCreateRecurring = () => {
-    console.log("Create Recurring Invoice");
+    router.push("/create-recurring");
   };
 
   const handleCreateCreditNote = () => {
-    console.log("Create Credit Note");
+    router.push("/create-credit-note");
   };
 
   return (

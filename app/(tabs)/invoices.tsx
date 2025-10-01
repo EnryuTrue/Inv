@@ -1,7 +1,8 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Search, Filter } from "lucide-react-native";
+import { router } from "expo-router";
+import { Search, Filter, X, Check } from "lucide-react-native";
 
 import Colors from "@/constants/colors";
 import { useInvoices } from "@/contexts/InvoiceContext";
@@ -62,10 +63,22 @@ function InvoiceItem({ invoiceNumber, clientName, amount, date, status, onPress 
 export default function InvoicesScreen() {
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "sent" | "paid" | "overdue">("all");
+  const [showFilterModal, setShowFilterModal] = useState(false);
   const { invoices, searchInvoices, getInvoiceMetrics } = useInvoices();
   const { getClientById } = useClients();
   
-  const displayInvoices = searchQuery ? searchInvoices(searchQuery) : invoices;
+  const filteredInvoices = React.useMemo(() => {
+    let result = searchQuery ? searchInvoices(searchQuery) : invoices;
+    
+    if (statusFilter !== "all") {
+      result = result.filter(invoice => invoice.status === statusFilter);
+    }
+    
+    return result;
+  }, [invoices, searchQuery, statusFilter, searchInvoices]);
+  
+  const displayInvoices = filteredInvoices;
   const metrics = getInvoiceMetrics();
   
   const formatDate = (date: Date) => {
@@ -82,7 +95,7 @@ export default function InvoicesScreen() {
   };
 
   const handleInvoicePress = (invoiceId: string) => {
-    console.log("View invoice:", invoiceId);
+    router.push(`/invoice/${invoiceId}`);
   };
 
   return (
@@ -106,7 +119,7 @@ export default function InvoicesScreen() {
               placeholderTextColor={Colors.gray[400]}
             />
           </View>
-          <TouchableOpacity style={styles.filterButton}>
+          <TouchableOpacity style={styles.filterButton} onPress={() => setShowFilterModal(true)}>
             <Filter color={Colors.primary} size={20} />
           </TouchableOpacity>
         </View>
@@ -130,6 +143,18 @@ export default function InvoicesScreen() {
             <Text style={styles.summaryLabel}>Overdue</Text>
           </View>
         </View>
+
+        {/* Status Filter Pills */}
+        {statusFilter !== "all" && (
+          <View style={styles.filterPillContainer}>
+            <View style={styles.filterPill}>
+              <Text style={styles.filterPillText}>Status: {statusFilter}</Text>
+              <TouchableOpacity onPress={() => setStatusFilter("all")}>
+                <X color={Colors.gray[600]} size={16} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
 
         {/* Invoice List */}
         <View style={styles.invoiceList}>
@@ -155,6 +180,46 @@ export default function InvoicesScreen() {
           )}
         </View>
       </ScrollView>
+      
+      {/* Filter Modal */}
+      <Modal
+        visible={showFilterModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowFilterModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Filter Invoices</Text>
+              <TouchableOpacity onPress={() => setShowFilterModal(false)}>
+                <X color={Colors.gray[600]} size={24} />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.filterSection}>
+              <Text style={styles.filterSectionTitle}>Status</Text>
+              {["all", "draft", "sent", "paid", "overdue"].map((status) => (
+                <TouchableOpacity
+                  key={status}
+                  style={styles.filterOption}
+                  onPress={() => {
+                    setStatusFilter(status as typeof statusFilter);
+                    setShowFilterModal(false);
+                  }}
+                >
+                  <Text style={styles.filterOptionText}>
+                    {status === "all" ? "All Invoices" : status.charAt(0).toUpperCase() + status.slice(1)}
+                  </Text>
+                  {statusFilter === status && (
+                    <Check color={Colors.primary} size={20} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -322,5 +387,70 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.gray[600],
     textAlign: "center",
+  },
+  filterPillContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  filterPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.primary + "20",
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    alignSelf: "flex-start",
+    gap: 8,
+  },
+  filterPillText: {
+    fontSize: 12,
+    color: Colors.primary,
+    fontWeight: "600",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: Colors.light.background,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: "80%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: Colors.light.text,
+  },
+  filterSection: {
+    marginBottom: 24,
+  },
+  filterSectionTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: Colors.light.text,
+    marginBottom: 12,
+  },
+  filterOption: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: Colors.light.card,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  filterOptionText: {
+    fontSize: 16,
+    color: Colors.light.text,
   },
 });
